@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
-import { AppState } from '../types';
-import { supabase } from '../services/supabase';
+import { AppState } from '../types.ts';
+import { supabase } from '../services/supabase.ts';
 
 interface LoginProps {
   updateState: (updater: (prev: AppState) => AppState) => void;
@@ -46,8 +45,6 @@ const Login: React.FC<LoginProps> = ({ updateState }) => {
 
         if (signUpError) throw signUpError;
         if (data.user) {
-          // Após o cadastro, o Supabase geralmente faz o login automático ou pede confirmação de e-mail
-          // Aqui tratamos como sucesso
           updateState(prev => ({
             ...prev,
             isLoggedIn: true,

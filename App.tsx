@@ -1,20 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
-import { TabType, AppState } from './types';
-import { supabase } from './services/supabase';
-import Sidebar from './components/Navigation';
-import Dashboard from './components/Dashboard';
-import NotesModule from './components/NotesModule';
-import WaterModule from './components/WaterModule';
-import RoutineModule from './components/RoutineModule';
-import WeeklyModule from './components/WeeklyModule';
-import MealModule from './components/MealModule';
-import StudyModule from './components/StudyModule';
-import MusicModule from './components/MusicModule';
-import SettingsModule from './components/SettingsModule';
-import Login from './components/Login';
+import { TabType, AppState } from './types.ts';
+import { supabase } from './services/supabase.ts';
+import Sidebar from './components/Navigation.tsx';
+import Dashboard from './components/Dashboard.tsx';
+import NotesModule from './components/NotesModule.tsx';
+import WaterModule from './components/WaterModule.tsx';
+import RoutineModule from './components/RoutineModule.tsx';
+import WeeklyModule from './components/WeeklyModule.tsx';
+import MealModule from './components/MealModule.tsx';
+import StudyModule from './components/StudyModule.tsx';
+import MusicModule from './components/MusicModule.tsx';
+import SettingsModule from './components/SettingsModule.tsx';
+import Login from './components/Login.tsx';
 
-const STORAGE_KEY = 'zenith_app_state_v1';
+const STORAGE_KEY = 'zenith_app_state_v2';
 
 const INITIAL_STATE: AppState = {
   isLoggedIn: false,
@@ -56,13 +55,13 @@ const App: React.FC = () => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Monitora mudanças na sessão de autenticação
   useEffect(() => {
+    // Monitora mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         fetchUserData(session.user.id);
       } else {
-        setState(INITIAL_STATE);
+        setState(prev => ({ ...INITIAL_STATE, theme: prev.theme }));
       }
     });
 
@@ -79,10 +78,17 @@ const App: React.FC = () => {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      if (data) {
-        setState({ ...data.data, isLoggedIn: true });
+      if (data && data.data) {
+        // MERGE SEGURO: Garante que novas propriedades do INITIAL_STATE existam
+        // Mesmo que o usuário tenha dados antigos salvos no banco
+        setState({
+          ...INITIAL_STATE,
+          ...data.data,
+          user: { ...INITIAL_STATE.user, ...data.data.user },
+          isLoggedIn: true 
+        });
       } else {
-        // Se for novo usuário, criamos o perfil dele
+        // Novo usuário
         const { error: insertError } = await supabase
           .from('profiles')
           .insert([{ id: userId, data: INITIAL_STATE }]);
@@ -92,13 +98,16 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Erro ao buscar dados do Supabase:", err);
-      // Fallback para localStorage se o banco falhar
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setState(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setState({ ...INITIAL_STATE, ...parsed, isLoggedIn: true });
+      }
     }
   };
 
   const saveToSupabase = async (updatedState: AppState) => {
+    if (!updatedState.isLoggedIn) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -121,16 +130,16 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (state.isLoggedIn) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
     
-    // Tema
     if (state.theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
 
-    // Sincronização remota automática (Debounced idealmente, mas direto para simplificar)
     if (state.isLoggedIn) {
       const timeoutId = setTimeout(() => saveToSupabase(state), 2000);
       return () => clearTimeout(timeoutId);
@@ -142,17 +151,23 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    // Verificação de segurança adicional para evitar crash se arrays forem undefined
+    const safeState = {
+      ...INITIAL_STATE,
+      ...state
+    };
+
     switch (activeTab) {
-      case 'home': return <Dashboard state={state} updateState={updateState} setActiveTab={setActiveTab} />;
-      case 'notes': return <NotesModule notes={state.notes} categories={state.noteCategories} updateState={updateState} />;
-      case 'water': return <WaterModule waterHistory={state.waterHistory} waterGoal={state.user.waterGoal} reminders={state.waterReminders} updateState={updateState} />;
-      case 'daily': return <RoutineModule tasks={state.tasks} updateState={updateState} />;
-      case 'weekly': return <WeeklyModule tasks={state.tasks} updateState={updateState} />;
-      case 'meals': return <MealModule meals={state.meals} manualItems={state.manualShoppingItems} updateState={updateState} />;
-      case 'study': return <StudyModule subjects={state.studySubjects} sessions={state.studySessions || []} questionLogs={state.questionLogs || []} updateState={updateState} />;
-      case 'music': return <MusicModule sessions={state.musicSessions} instruments={state.musicInstruments} updateState={updateState} />;
-      case 'settings': return <SettingsModule state={state} updateState={updateState} />;
-      default: return <Dashboard state={state} updateState={updateState} setActiveTab={setActiveTab} />;
+      case 'home': return <Dashboard state={safeState} updateState={updateState} setActiveTab={setActiveTab} />;
+      case 'notes': return <NotesModule notes={safeState.notes || []} categories={safeState.noteCategories || []} updateState={updateState} />;
+      case 'water': return <WaterModule waterHistory={safeState.waterHistory || []} waterGoal={safeState.user.waterGoal} reminders={safeState.waterReminders || []} updateState={updateState} />;
+      case 'daily': return <RoutineModule tasks={safeState.tasks || []} updateState={updateState} />;
+      case 'weekly': return <WeeklyModule tasks={safeState.tasks || []} updateState={updateState} />;
+      case 'meals': return <MealModule meals={safeState.meals || []} manualItems={safeState.manualShoppingItems || []} updateState={updateState} />;
+      case 'study': return <StudyModule subjects={safeState.studySubjects || []} sessions={safeState.studySessions || []} questionLogs={safeState.questionLogs || []} updateState={updateState} />;
+      case 'music': return <MusicModule sessions={safeState.musicSessions || []} instruments={safeState.musicInstruments || []} updateState={updateState} />;
+      case 'settings': return <SettingsModule state={safeState} updateState={updateState} />;
+      default: return <Dashboard state={safeState} updateState={updateState} setActiveTab={setActiveTab} />;
     }
   };
 
@@ -166,9 +181,9 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto h-screen pb-20 md:pb-0">
         <div className="max-w-6xl mx-auto p-4 md:p-8">
           {isSyncing && (
-            <div className="fixed top-4 right-4 z-[300] bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest text-primary-500 border border-primary-500/20 flex items-center gap-2">
-              <div className="w-1 h-1 bg-primary-500 rounded-full animate-ping"></div>
-              Sincronizando Nuvem
+            <div className="fixed top-4 right-4 z-[300] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest text-primary-500 border border-primary-500/20 flex items-center gap-2 shadow-sm">
+              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse"></div>
+              Nuvem Ativa
             </div>
           )}
           {renderContent()}

@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { TabType, AppState } from '../types';
+import { TabType, AppState } from '../types.ts';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -23,7 +22,6 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user }
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <nav className="hidden md:flex flex-col w-64 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6 sticky top-0 shadow-sm transition-colors duration-300">
         <div className="flex items-center gap-3 mb-10 px-2">
           {user.avatarUrl ? (
@@ -60,7 +58,6 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab, user }
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 z-50 transition-colors duration-300">
         <div className="flex justify-around items-center h-16 px-2 overflow-x-auto">
           {menuItems.map((item) => (
