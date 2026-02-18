@@ -1,17 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Inicialização utilizando a variável de ambiente process.env.API_KEY injetada pela hospedagem (Netlify).
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Acesso via window.process para garantir captura do polyfill no navegador
+const apiKey = window.process?.env?.API_KEY || "";
+const ai = new GoogleGenAI({ apiKey });
 
 const FALLBACK_QUOTES = [
   "Hoje, você pode ser melhor do que foi ontem.",
   "O sucesso é a soma de pequenos esforços repetidos dia após dia.",
   "A disciplina é a ponte entre metas e realizações.",
-  "Não pare quando estiver cansado, pare quando tiver terminado.",
-  "A consistência supera o talento quando o talento não tem consistência.",
-  "Seu futuro é criado pelo que você faz hoje, não amanhã.",
-  "O foco determina a sua realidade.",
-  "Trabalhe duro em silêncio, deixe seu sucesso ser o seu barulho."
+  "A consistência supera o talento quando o talento não tem consistência."
 ];
 
 const QUOTE_CACHE_KEY = 'zenith_cached_quote';
@@ -22,44 +19,34 @@ export async function getMotivationalQuote(userName: string): Promise<string> {
   const cachedDate = localStorage.getItem(QUOTE_DATE_KEY);
   const cachedQuote = localStorage.getItem(QUOTE_CACHE_KEY);
 
-  if (cachedDate === today && cachedQuote) {
-    return cachedQuote;
-  }
+  if (cachedDate === today && cachedQuote) return cachedQuote;
+
+  if (!apiKey) return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Gere uma frase motivacional curta e impactante (máximo 15 palavras) em português para o usuário ${userName}. O foco deve ser produtividade, disciplina e foco.`,
-      config: {
-        temperature: 0.8,
-        maxOutputTokens: 60,
-      }
+      contents: `Gere uma frase motivacional curta em português para ${userName} sobre disciplina.`,
     });
 
     const quote = response.text?.replace(/"/g, '') || FALLBACK_QUOTES[0];
-    
     localStorage.setItem(QUOTE_CACHE_KEY, quote);
     localStorage.setItem(QUOTE_DATE_KEY, today);
-    
     return quote;
   } catch (error) {
-    console.warn("Erro ao buscar frase do Gemini. Verifique a API_KEY nas variáveis de ambiente.");
     return FALLBACK_QUOTES[0];
   }
 }
 
 export async function getStudyAdvice(subject: string): Promise<string> {
+  if (!apiKey) return "A constância é a chave para o aprendizado.";
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Dê uma dica rápida de estudo em português para a matéria: ${subject}. Seja conciso.`,
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 100,
-      }
+      contents: `Dica rápida de estudo para: ${subject}.`,
     });
-    return response.text || "A consistência é a chave para o aprendizado.";
+    return response.text || "Divida o conteúdo em pequenos blocos.";
   } catch (error) {
-    return "Divida o conteúdo em pequenos blocos e faça revisões constantes.";
+    return "Mantenha o foco nos fundamentos.";
   }
 }
