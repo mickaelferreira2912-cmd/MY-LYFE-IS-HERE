@@ -1,7 +1,6 @@
-
 import { GoogleGenAI } from "@google/genai";
 
-// Fixed: Initializing strictly according to guidelines using process.env.API_KEY
+// Inicialização utilizando a variável de ambiente process.env.API_KEY injetada pela hospedagem (Netlify).
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const FALLBACK_QUOTES = [
@@ -23,7 +22,6 @@ export async function getMotivationalQuote(userName: string): Promise<string> {
   const cachedDate = localStorage.getItem(QUOTE_DATE_KEY);
   const cachedQuote = localStorage.getItem(QUOTE_CACHE_KEY);
 
-  // Se já temos uma frase para hoje, não chama a API
   if (cachedDate === today && cachedQuote) {
     return cachedQuote;
   }
@@ -31,7 +29,7 @@ export async function getMotivationalQuote(userName: string): Promise<string> {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Gere uma frase motivacional curta e impactante (máximo 15 palavras) em português para o usuário ${userName}. O foco deve ser produtividade, disciplina e foco. Use obrigatoriamente um tom similar a: "Hoje, você pode ser melhor do que foi ontem."`,
+      contents: `Gere uma frase motivacional curta e impactante (máximo 15 palavras) em português para o usuário ${userName}. O foco deve ser produtividade, disciplina e foco.`,
       config: {
         temperature: 0.8,
         maxOutputTokens: 60,
@@ -40,19 +38,13 @@ export async function getMotivationalQuote(userName: string): Promise<string> {
 
     const quote = response.text?.replace(/"/g, '') || FALLBACK_QUOTES[0];
     
-    // Salva no cache
     localStorage.setItem(QUOTE_CACHE_KEY, quote);
     localStorage.setItem(QUOTE_DATE_KEY, today);
     
     return quote;
   } catch (error) {
-    console.warn("Gemini API Quota reached or error. Using primary user fallback quote.");
-    const primaryFallback = FALLBACK_QUOTES[0]; 
-    
-    localStorage.setItem(QUOTE_CACHE_KEY, primaryFallback);
-    localStorage.setItem(QUOTE_DATE_KEY, today);
-    
-    return primaryFallback;
+    console.warn("Erro ao buscar frase do Gemini. Verifique a API_KEY nas variáveis de ambiente.");
+    return FALLBACK_QUOTES[0];
   }
 }
 
