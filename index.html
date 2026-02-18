@@ -7,10 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script>
-      // Polyfill para process.env antes de carregar os módulos
+      // Polyfill crucial para simular ambiente de build no navegador
       window.process = {
         env: {
-          NODE_ENV: 'production'
+          NODE_ENV: 'production',
+          // O Netlify não injeta estas variáveis no navegador automaticamente em sites estáticos.
+          // Elas precisam ser definidas aqui ou via um processo de build.
+          API_KEY: '', 
+          SUPABASE_URL: 'https://padzesxgdaetqyhsewdv.supabase.co',
+          SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_iXe9vQQWg1yHuUXl-t_k7A_YBN1UsJo'
         }
       };
 
@@ -67,18 +72,19 @@
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
     "react/": "https://esm.sh/react@^19.2.4/",
     "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
     "recharts": "https://esm.sh/recharts@^3.7.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.0"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
 }
 </script>
 </head>
   <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
     <div id="root"></div>
-    <!-- Carregamento do script via Babel para suporte TSX no Netlify -->
     <script type="text/babel" data-type="module" data-presets="react" src="index.tsx"></script>
   </body>
 </html>
